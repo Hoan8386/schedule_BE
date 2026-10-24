@@ -1,0 +1,80 @@
+package com.vn.schedule.config;
+
+import java.util.regex.Pattern;
+
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.HandlerMapping;
+
+import com.vn.schedule.domain.User;
+import com.vn.schedule.repository.PermissionRepository;
+import com.vn.schedule.repository.UserRepository;
+import com.vn.schedule.util.SecurityUtil;
+import com.vn.schedule.util.error.PermissionException;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+@Component
+public class PermissionInterceptor implements HandlerInterceptor {
+
+    private final UserRepository userRepository;
+    private final PermissionRepository permissionRepository;
+
+    public PermissionInterceptor(
+            UserRepository userRepository,
+            PermissionRepository permissionRepository) {
+        this.userRepository = userRepository;
+        this.permissionRepository = permissionRepository;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean preHandle(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Object handler) throws Exception {
+
+        String requestURI = request.getRequestURI();
+        String httpMethod = request.getMethod();
+
+        String login = SecurityUtil.getCurrentUserLogin().orElse(null);
+
+        if (login == null || login.isBlank()) {
+            return true;
+        }
+
+        User user = userRepository.findByUsername(login)
+                .or(() -> userRepository.findByEmail(login))
+                .orElseThrow(() ->
+                        new PermissionException("Tài khoản hiện tại không tồn tại."));
+
+        if (!"ACTIVE".equalsIgnoreCase(user.getStatus())) {
+            throw new PermissionException(
+                    "Tài khoản hiện tại đã bị vô hiệu hóa.");
+        }
+
+        String routePattern = (String) request.getAttribute(
+                HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+
+        // Interceptors can run before Spring resolves the controller mapping.
+        // In that case the pattern is /**, which must not be used for permission lookup.
+        String apiPath = routePattern == null || "/**".equals(routePattern)
+                ? requestURI
+                : request.getContextPath() + routePattern;
+
+        // Keep permission lookup stable for the binary attachment route even
+        // when an interceptor runs before Spring exposes the handler pattern.
+        if (Pattern.matches("/api/v1/attachment/file/[^/]+", requestURI)) {
+            apiPath = "/api/v1/attachment/file/{id}";
+        }
+
+        if (!permissionRepository.existsForUser(user.getId(), apiPath, httpMethod)) {
+            throw new PermissionException(
+                    "Bạn không có quyền truy cập endpoint này.");
+        }
+
+        return true;
+    }
+}

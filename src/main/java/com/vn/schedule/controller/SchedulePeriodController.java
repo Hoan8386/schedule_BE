@@ -1,0 +1,77 @@
+package com.vn.schedule.controller;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import com.vn.schedule.dto.*;
+import com.vn.schedule.dto.request.*;
+import com.vn.schedule.dto.response.*;
+import com.vn.schedule.service.SchedulePeriodService;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import com.vn.schedule.util.anotation.ApiMessage;
+
+@RestController
+@RequestMapping("/api/v1/schedule_period")
+public class SchedulePeriodController {
+    private final SchedulePeriodService service;
+
+    public SchedulePeriodController(SchedulePeriodService service) {
+        this.service = service;
+    }
+
+    @GetMapping
+    @ApiMessage("Lấy danh sách dữ liệu")
+    public ResponseEntity<List<SchedulePeriodResponse>> list(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) LocalDate from,
+            @RequestParam(required = false) LocalDate to,
+            @RequestParam(required = false) Integer storeId,
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(responses(service.findAll(q, from, to, storeId, status)));
+    }
+
+    @GetMapping("/{id}")
+    @ApiMessage("Lấy thông tin chi tiết")
+    public ResponseEntity<SchedulePeriodResponse> get(@PathVariable Integer id) {
+        return ResponseEntity.ok(response(service.findById(id)));
+    }
+
+    @PostMapping
+
+    @ApiMessage("Tạo mới dữ liệu")
+    public ResponseEntity<SchedulePeriodResponse> create(@RequestBody SchedulePeriodRequest body) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(response(service.create(body)));
+    }
+
+    @PutMapping("/{id}")
+    @ApiMessage("Cập nhật dữ liệu")
+    public ResponseEntity<SchedulePeriodResponse> update(@PathVariable Integer id, @RequestBody SchedulePeriodRequest body) {
+        return ResponseEntity.ok(response(service.update(id, body)));
+    }
+
+    @GetMapping("/{id}/delete-preview")
+    @ApiMessage("Thống kê dữ liệu sẽ bị xóa cùng kỳ")
+    public ResponseEntity<Map<String, Long>> deletePreview(@PathVariable Integer id) {
+        return ResponseEntity.ok(service.deletePreview(id));
+    }
+
+    @DeleteMapping("/{id}")
+
+    @ApiMessage("Xóa dữ liệu")
+    public ResponseEntity<Void> delete(@PathVariable Integer id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    private List<SchedulePeriodResponse> responses(java.util.Collection<?> values) {
+        return values.stream().map(value -> new SchedulePeriodResponse(DtoMapper.toMap(value))).toList();
+    }
+
+    private SchedulePeriodResponse response(Object value) {
+        return new SchedulePeriodResponse(DtoMapper.toMap(value));
+    }
+}

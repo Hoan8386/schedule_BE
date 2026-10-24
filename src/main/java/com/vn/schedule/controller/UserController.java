@@ -1,0 +1,78 @@
+package com.vn.schedule.controller;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import com.vn.schedule.domain.User;
+import com.vn.schedule.dto.*;
+import com.vn.schedule.dto.request.*;
+import com.vn.schedule.dto.response.*;
+import com.vn.schedule.service.UserService;
+
+import java.util.List;
+import com.vn.schedule.util.anotation.ApiMessage;
+
+@RestController
+@RequestMapping("/api/v1/user")
+public class UserController {
+    private final UserService service;
+
+    public UserController(UserService service) {
+        this.service = service;
+    }
+
+    @GetMapping
+    @ApiMessage("Lấy danh sách dữ liệu")
+    public ResponseEntity<List<UserResponse>> list() {
+        return ResponseEntity.ok(responses(service.findAll()));
+    }
+
+    /** Trang quản lý tài khoản: tài khoản + vai trò hiện tại, phân trang (mặc định 10, mới nhất trước) và số liệu tổng. */
+    @GetMapping("/accounts")
+    @ApiMessage("Lấy danh sách tài khoản")
+    public ResponseEntity<AccountPageResponse> accounts(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(service.accounts(page, size, sort, q, role, status));
+    }
+
+    @GetMapping("/{id}")
+    @ApiMessage("Lấy thông tin chi tiết")
+    public ResponseEntity<UserResponse> get(@PathVariable Integer id) {
+        return ResponseEntity.ok(response(service.findById(id)));
+    }
+
+    @PostMapping
+
+    @ApiMessage("Tạo mới dữ liệu")
+    public ResponseEntity<UserResponse> create(@RequestBody UserRequest body) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(response(service.create(body)));
+    }
+
+    @PutMapping("/{id}")
+    @ApiMessage("Cập nhật dữ liệu")
+    public ResponseEntity<UserResponse> update(@PathVariable Integer id, @RequestBody UserRequest body) {
+        return ResponseEntity.ok(response(service.update(id, body)));
+    }
+
+    @DeleteMapping("/{id}")
+
+    @ApiMessage("Xóa dữ liệu")
+    public ResponseEntity<Void> delete(@PathVariable Integer id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    private List<UserResponse> responses(java.util.Collection<?> values) {
+        return values.stream().map(value -> new UserResponse(DtoMapper.toMap(value))).toList();
+    }
+
+    private UserResponse response(Object value) {
+        return new UserResponse(DtoMapper.toMap(value));
+    }
+}
