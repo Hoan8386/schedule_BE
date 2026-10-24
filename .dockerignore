@@ -8,3 +8,5 @@ postman/
 README.md
 Dockerfile
 .dockerignore
+src/main/resources/application-secret.properties
+.env
