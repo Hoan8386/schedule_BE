@@ -14,7 +14,7 @@ FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
 ENV TZ=Asia/Ho_Chi_Minh \
-    JAVA_OPTS="-Xms256m -Xmx512m"
+    JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError"
 
 RUN apk add --no-cache tzdata \
     && addgroup -S spring && adduser -S spring -G spring
